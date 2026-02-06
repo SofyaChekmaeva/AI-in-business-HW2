@@ -134,10 +134,10 @@ I have a sentiment analyzer web application that uses Hugging Face Transformers.
 
 ### Current Project Structure:
 
-- index.html - Main HTML interface with review display and sentiment results
-- app.js - Main JavaScript using Transformers.js for local sentiment analysis
-- reviews_test.tsv - Sample reviews data file
-- Deployed on GitHub Pages at: https://github.com/dryjins/aib/tree/main/2026/l1/correct
+- `index.html` - Main HTML interface with review display and sentiment results
+- `app.js` - Main JavaScript using Transformers.js for local sentiment analysis
+- `reviews_test.tsv` - Sample reviews data file
+- Deployed on GitHub Pages at: `https://github.com/dryjins/aib/tree/main/2026/l1/correct`
   
 ### Goal:
 
