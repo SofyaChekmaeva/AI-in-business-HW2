@@ -131,18 +131,35 @@ function analyzeRandomReview() {
   sentimentResult.innerHTML = ""; // Reset previous result
   sentimentResult.className = "sentiment-result"; // Reset classes
 
-  // Call local sentiment model (transformers.js)
-  analyzeSentiment(selectedReview)
-    .then((result) => displaySentiment(result))
-    .catch((error) => {
-      console.error("Error:", error);
-      showError(error.message || "Failed to analyze sentiment.");
-    })
-    .finally(() => {
-      loadingElement.style.display = "none";
-      analyzeBtn.disabled = false;
-    });
-}
+// Call local sentiment model (transformers.js)
+analyzeSentiment(selectedReview)
+  .then((result) => {
+    displaySentiment(result);
+    // После отображения результата, логируем его
+    const sentimentData = result[0][0]; // {label: 'POSITIVE/NEGATIVE', score: 0.99}
+    const label = sentimentData.label.toUpperCase();
+    const confidence = (sentimentData.score * 100).toFixed(1);
+    
+    // Собираем meta-данные
+    const meta = {
+      model: 'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
+      inferenceType: 'local_transformers.js',
+      timestamp: Date.now(),
+      browser: navigator.userAgent,
+      reviewLength: selectedReview.length
+    };
+    
+    // Отправляем логи в Google Sheets
+    logSentimentAnalysis(selectedReview, label, confidence, meta);
+  })
+  .catch((error) => {
+    console.error("Error:", error);
+    showError(error.message || "Failed to analyze sentiment.");
+  })
+  .finally(() => {
+    loadingElement.style.display = "none";
+    analyzeBtn.disabled = false;
+  });
 
 // Call local transformers.js pipeline for sentiment classification
 async function analyzeSentiment(text) {
@@ -231,28 +248,30 @@ function hideError() {
 }
 
 // Logging
-async function logSentimentAnalysis(reviewText, sentimentResult, confidence, meta) {
-  const webAppUrl = 'https://script.google.com/macros/s/AKfycbyiQ5CpEmyq6IPhuY-sYagS_DmpJzUQQ7WtbsLOTY15ZEOcjFF20gAzNFB08fjQfcja/exec'; // URL to my Google Sheets
+async function logSentimentAnalysis(reviewText, sentimentLabel, confidence, meta) {
+  const webAppUrl = 'https://script.google.com/macros/s/AKfycbyiQ5CpEmyq6IPhuY-sYagS_DmpJzUQQ7WtbsLOTY15ZEOcjFF20gAzNFB08fjQfcja/exec';
   
   const payload = {
     ts: Date.now(),
-    review: reviewText,
-    sentiment: `${sentimentResult} (${confidence}%)`,
-    meta: JSON.stringify(meta) // или просто строка с дополнительной информацией
+    review: reviewText.substring(0, 5000), // ограничиваем длину для Google Sheets
+    sentiment: `${sentimentLabel} (${confidence}%)`,
+    meta: JSON.stringify(meta)
   };
+
+  console.log('Sending log payload:', payload);
 
   try {
     const response = await fetch(webAppUrl, {
       method: 'POST',
+      mode: 'no-cors', // ВАЖНО: добавляем no-cors для обхода CORS
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams(payload).toString()
     });
     
-    if (await response.text() === 'OK') {
-      console.log('Log saved successfully');
-    }
+    // При no-cors response будет непрозрачным, так что просто проверяем отправку
+    console.log('Log sent successfully (response may not be readable due to no-cors)');
   } catch (error) {
     console.error('Failed to save log:', error);
   }
