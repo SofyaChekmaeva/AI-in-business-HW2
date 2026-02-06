@@ -160,7 +160,7 @@ html
 </head>
 <body>
     <div class="container">
-        <h1>Review Sentiment Analyzer</h1>
+        <h3>Review Sentiment Analyzer</h3>
         
         <!-- Hugging Face API Token Section -->
         <div class="api-section">
@@ -195,6 +195,7 @@ html
 </html>
 
 - `app.js (showing only main structure):`
+
 javascript
 import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js";
 
