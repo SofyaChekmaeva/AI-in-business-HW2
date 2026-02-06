@@ -229,3 +229,39 @@ function showError(message) {
 function hideError() {
   errorElement.style.display = "none";
 }
+
+// Logging
+async function logSentimentAnalysis(reviewText, sentimentResult, confidence, meta) {
+  const webAppUrl = 'https://script.google.com/macros/s/AKfycbyiQ5CpEmyq6IPhuY-sYagS_DmpJzUQQ7WtbsLOTY15ZEOcjFF20gAzNFB08fjQfcja/exec'; // URL to my Google Sheets
+  
+  const payload = {
+    ts: Date.now(),
+    review: reviewText,
+    sentiment: `${sentimentResult} (${confidence}%)`,
+    meta: JSON.stringify(meta) // или просто строка с дополнительной информацией
+  };
+
+  try {
+    const response = await fetch(webAppUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(payload).toString()
+    });
+    
+    if (await response.text() === 'OK') {
+      console.log('Log saved successfully');
+    }
+  } catch (error) {
+    console.error('Failed to save log:', error);
+  }
+}
+
+
+
+
+
+
+
+
