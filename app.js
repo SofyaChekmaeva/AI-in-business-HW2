@@ -24,13 +24,22 @@ document.addEventListener("DOMContentLoaded", function () {
   // Set up event listeners
   analyzeBtn.addEventListener("click", analyzeRandomReview);
   apiTokenInput.addEventListener("change", saveApiToken);
+  
+  // Добавьте обработчик для кнопки сохранения Google Script URL
+  const saveScriptUrlBtn = document.getElementById('save-script-url');
+  if (saveScriptUrlBtn) {
+      saveScriptUrlBtn.addEventListener('click', saveGoogleScriptUrl);
+  }
 
-  // Load saved API token if exists (not used with local inference but kept for UI)
+  // Load saved settings
   const savedToken = localStorage.getItem("hfApiToken");
   if (savedToken) {
     apiTokenInput.value = savedToken;
     apiToken = savedToken;
   }
+  
+  // Load saved Google Script URL
+  loadGoogleScriptUrl();
 
   // Initialize transformers.js sentiment model
   initSentimentModel();
