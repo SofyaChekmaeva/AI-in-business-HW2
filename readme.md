@@ -1,3 +1,5 @@
+## Prompt 1.0
+
 ### Role  
 You are an expert front-end web developer with deep knowledge of vanilla JavaScript, browser-based ML using Transformers.js, and static site deployment. You always follow the given specifications exactly and write clean, well-structured, production-ready code.
 
@@ -123,3 +125,209 @@ Return your answer in this exact structure:
      - All logic for TSV loading, model initialization, random review selection, sentiment analysis with Transformers.js, UI updates, and error handling.  
 
 3. Do not include any extra explanation or commentary outside these two code blocks.
+
+## Prompt 2.0 (Logging)
+
+### Project Context
+
+I have a sentiment analyzer web application that uses Hugging Face Transformers.js to analyze product reviews locally in the browser. The application currently works but lacks logging functionality. I need to add Google Sheets logging to record each analysis result.
+
+### Current Project Structure:
+
+- index.html - Main HTML interface with review display and sentiment results
+- app.js - Main JavaScript using Transformers.js for local sentiment analysis
+- reviews_test.tsv - Sample reviews data file
+- Deployed on GitHub Pages at: https://github.com/dryjins/aib/tree/main/2026/l1/correct
+  
+### Goal:
+
+Add Google Sheets logging functionality that:
+1. Logs each sentiment analysis result to Google Sheets
+2. Includes timestamp, review text, sentiment with confidence, and metadata
+3. Works with the existing UI and analysis flow
+
+### Current Code State:
+
+Here are the current files:
+
+- `index.html (showing only relevant parts):`
+
+html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Styles and meta tags -->
+</head>
+<body>
+    <div class="container">
+        <h1>Review Sentiment Analyzer</h1>
+        
+        <!-- Hugging Face API Token Section -->
+        <div class="api-section">
+            <h2>Hugging Face API Setup</h2>
+            <div class="api-input">
+                <label for="api-token">Enter your Hugging Face API Token:</label>
+                <input type="text" id="api-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+            </div>
+        </div>
+        
+        <!-- Analysis Section -->
+        <div class="review-section">
+            <button id="analyze-btn">Analyze Random Review</button>
+            
+            <div class="loading">Loading...</div>
+            <div class="error" id="error-message"></div>
+            
+            <div class="review-card">
+                <h3>Selected Review:</h3>
+                <p class="review-text" id="review-text">Click the button above to analyze a random review</p>
+            </div>
+            
+            <div class="sentiment-result" id="sentiment-result">
+                <i class="fas fa-question-circle icon"></i>
+                <span>Sentiment will appear here</span>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="app.js"></script>
+</body>
+</html>
+
+- `app.js (showing only main structure):`
+javascript
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js";
+
+let reviews = [];
+let sentimentPipeline = null;
+
+document.addEventListener("DOMContentLoaded", function () {
+    loadReviews();
+    initSentimentModel();
+    document.getElementById("analyze-btn").addEventListener("click", analyzeRandomReview);
+});
+
+function analyzeRandomReview() {
+    // Gets random review, analyzes with sentimentPipeline, displays result
+    // NEED: Add logging after successful analysis
+}
+
+// Other existing functions: initSentimentModel(), loadReviews(), displaySentiment(), etc.
+
+### Requirements for Logging Feature
+1. Google Apps Script Setup:
+Create a Google Apps Script that:
+- Receives data via GET requests (better for CORS)
+- Writes to a Google Sheets with columns: ts_iso, Review, Sentiment (with confidence), Meta
+- Handles test requests (?test=true) for connection testing
+- Returns appropriate CORS headers
+  
+2. HTML Modifications Needed:
+Add to index.html:
+- A new section for Google Sheets configuration
+- Input field for Google Apps Script URL
+- Save and test connection buttons
+- Visual status indicator for logging
+  
+3. JavaScript Modifications Needed:
+Add to app.js:
+- Functions to save/load Google Script URL from localStorage
+- logSentimentAnalysis() function that sends data to Google Sheets
+- Connection testing function
+- Integration with existing analyzeRandomReview() function
+- Error handling for logging failures (should not interrupt main analysis)
+  
+4. Data Format for Logging:
+- Each log entry should include:
+- ts_iso: ISO timestamp of analysis
+- Review: The review text being analyzed (truncate if too long)
+- Sentiment (with confidence): e.g., "POSITIVE (95.5% confidence)"
+- Meta: JSON string containing metadata like:
+  
+json
+{
+  "model": "distilbert-base-uncased-finetuned-sst-2-english",
+  "inferenceType": "local_transformers.js",
+  "browser": "Chrome/120.0.0.0",
+  "reviewLength": 142,
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+
+### Specific Implementation Instructions
+
+#### Step 1: Modify index.html
+
+Add this section after the existing API token section:
+
+html
+<!-- Google Sheets Logging Section -->
+<div class="api-section">
+    <h2><i class="fas fa-google"></i> Google Sheets Logging</h2>
+    <div class="api-input">
+        <label for="google-script-url">Google Apps Script URL:</label>
+        <input type="text" id="google-script-url" 
+               placeholder="https://script.google.com/macros/s/.../exec">
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button id="save-script-url">Save URL</button>
+            <button id="test-logging">Test Connection</button>
+        </div>
+        <p><small>Enter your Google Apps Script URL to enable logging of analysis results.</small></p>
+    </div>
+</div>
+
+#### Step 2: Create Google Apps Script Code
+
+Provide a complete Google Apps Script code that:
+- Has doGet() function to handle GET requests
+- Creates/accesses a sheet named "logs"
+- Writes data in the specified format
+- Handles test requests and errors gracefully
+
+#### Step 3: Modify app.js
+
+Add these specific functions:
+- saveGoogleScriptUrl() - saves URL to localStorage
+- loadGoogleScriptUrl() - loads URL on page load
+- testGoogleSheetsConnection() - tests the connection
+- logSentimentAnalysis(reviewText, sentimentLabel, confidence, meta) - sends data
+- Update analyzeRandomReview() to call logging after successful analysis
+  
+#### Step 4: Integration Points
+
+- The logging should happen AFTER sentiment analysis is complete and displayed
+- Logging failures should NOT affect the main analysis flow (use try-catch)
+- Show visual feedback when logging is successful/failed
+- Store Google Script URL persistently in localStorage
+
+### Constraints & Considerations
+
+1. CORS Issues: Use mode: 'no-cors' with fetch or GET requests with URL parameters
+2. Data Size: Truncate review text if > 10,000 characters for URL limits
+3. Error Handling: Don't show logging errors to users unless they test connection
+4. User Experience: Logging should be transparent to users (no extra clicks needed)
+5. Performance: Logging should not slow down the analysis process
+   
+### Expected Final Behavior
+
+1. User opens the page
+2. Optionally configures Google Script URL (saved for future visits)
+3. Clicks "Analyze Random Review"
+4. Sentiment analysis happens and displays result
+5. In background: data is sent to Google Sheets
+6. User can verify by opening the Google Sheet
+   
+### Testing Requirements
+
+1. Connection test should verify the Google Script is accessible
+2. Each analysis should create a new row in Google Sheets
+3. Logging should work even if user doesn't have Hugging Face API token
+4. The system should handle network errors gracefully
+   
+### Output Format
+
+Provide complete code for:
+1. Modified index.html with logging UI
+2. Modified app.js with all logging functions
+3. Google Apps Script code for the backend
+4. Brief setup instructions for Google Sheets and Apps Script
+
