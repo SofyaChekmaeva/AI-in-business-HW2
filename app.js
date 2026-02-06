@@ -248,40 +248,44 @@ function hideError() {
 }
 
 // Logging
+// Logging to Google Sheets
 async function logSentimentAnalysis(reviewText, sentimentLabel, confidence, meta) {
-  const webAppUrl = 'https://script.google.com/macros/s/AKfycbyiQ5CpEmyq6IPhuY-sYagS_DmpJzUQQ7WtbsLOTY15ZEOcjFF20gAzNFB08fjQfcja/exec';
-  
-  // Создаем параметры URL (GET запрос лучше работает с CORS)
-  const params = new URLSearchParams({
-    ts: Date.now(),
-    review: reviewText.substring(0, 5000), // ограничиваем длину
-    sentiment: `${sentimentLabel} (${confidence}%)`,
-    meta: JSON.stringify(meta)
-  });
-  
-  const urlWithParams = `${webAppUrl}?${params.toString()}`;
-  
-  console.log('Sending log to:', urlWithParams);
-  
-  try {
-    // Используем простой GET запрос (лучше для CORS)
-    const response = await fetch(urlWithParams, {
-      method: 'GET',
-      mode: 'no-cors' // Или убрать mode вообще
-    });
-    
-    console.log('Log sent via GET request');
-    
-  } catch (error) {
-    console.error('Failed to save log:', error);
-    // Даже если ошибка, не прерываем основной процесс
-  }
+    try {
+        // Получаем сохраненный URL из localStorage
+        const googleScriptUrl = localStorage.getItem('googleScriptUrl');
+        
+        if (!googleScriptUrl) {
+            console.warn("Google Script URL not configured. Skipping logging.");
+            return;
+        }
+        
+        // Подготавливаем данные для отправки
+        const payload = {
+            ts: Date.now(),
+            review: reviewText.substring(0, 10000), // Ограничиваем длину
+            sentiment: `${sentimentLabel} (${confidence}%)`,
+            meta: JSON.stringify(meta)
+        };
+        
+        console.log("Sending log to Google Sheets:", payload);
+        
+        // Создаем параметры для GET запроса (лучше работает с CORS)
+        const params = new URLSearchParams(payload);
+        const url = `${googleScriptUrl}?${params.toString()}`;
+        
+        // Отправляем запрос с помощью fetch
+        // Используем no-cors для обхода CORS ограничений
+        const response = await fetch(url, {
+            method: 'GET',
+            mode: 'no-cors' // Важно: не ждем ответ из-за CORS
+        });
+        
+        console.log("Log sent to Google Sheets (no-cors mode)");
+        
+    } catch (error) {
+        console.error("Failed to save log to Google Sheets:", error);
+        // Не показываем ошибку пользователю, чтобы не мешать основному процессу
+    }
 }
-
-
-
-
-
-
 
 
