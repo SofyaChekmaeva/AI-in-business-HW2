@@ -251,29 +251,30 @@ function hideError() {
 async function logSentimentAnalysis(reviewText, sentimentLabel, confidence, meta) {
   const webAppUrl = 'https://script.google.com/macros/s/AKfycbyiQ5CpEmyq6IPhuY-sYagS_DmpJzUQQ7WtbsLOTY15ZEOcjFF20gAzNFB08fjQfcja/exec';
   
-  const payload = {
+  // Создаем параметры URL (GET запрос лучше работает с CORS)
+  const params = new URLSearchParams({
     ts: Date.now(),
-    review: reviewText.substring(0, 5000), // ограничиваем длину для Google Sheets
+    review: reviewText.substring(0, 5000), // ограничиваем длину
     sentiment: `${sentimentLabel} (${confidence}%)`,
     meta: JSON.stringify(meta)
-  };
-
-  console.log('Sending log payload:', payload);
-
+  });
+  
+  const urlWithParams = `${webAppUrl}?${params.toString()}`;
+  
+  console.log('Sending log to:', urlWithParams);
+  
   try {
-    const response = await fetch(webAppUrl, {
-      method: 'POST',
-      mode: 'no-cors', // ВАЖНО: добавляем no-cors для обхода CORS
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams(payload).toString()
+    // Используем простой GET запрос (лучше для CORS)
+    const response = await fetch(urlWithParams, {
+      method: 'GET',
+      mode: 'no-cors' // Или убрать mode вообще
     });
     
-    // При no-cors response будет непрозрачным, так что просто проверяем отправку
-    console.log('Log sent successfully (response may not be readable due to no-cors)');
+    console.log('Log sent via GET request');
+    
   } catch (error) {
     console.error('Failed to save log:', error);
+    // Даже если ошибка, не прерываем основной процесс
   }
 }
 
