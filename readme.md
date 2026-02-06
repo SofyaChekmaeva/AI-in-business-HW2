@@ -216,7 +216,9 @@ function analyzeRandomReview() {
 // Other existing functions: initSentimentModel(), loadReviews(), displaySentiment(), etc.
 
 ### Requirements for Logging Feature
+
 1. Google Apps Script Setup:
+   
 Create a Google Apps Script that:
 - Receives data via GET requests (better for CORS)
 - Writes to a Google Sheets with columns: ts_iso, Review, Sentiment (with confidence), Meta
@@ -224,6 +226,7 @@ Create a Google Apps Script that:
 - Returns appropriate CORS headers
   
 2. HTML Modifications Needed:
+   
 Add to index.html:
 - A new section for Google Sheets configuration
 - Input field for Google Apps Script URL
@@ -231,6 +234,7 @@ Add to index.html:
 - Visual status indicator for logging
   
 3. JavaScript Modifications Needed:
+   
 Add to app.js:
 - Functions to save/load Google Script URL from localStorage
 - logSentimentAnalysis() function that sends data to Google Sheets
