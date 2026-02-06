@@ -105,6 +105,33 @@ function saveApiToken() {
   }
 }
 
+// Save Google Script URL to localStorage
+function saveGoogleScriptUrl() {
+    const urlInput = document.getElementById('google-script-url');
+    if (!urlInput) return;
+    
+    const url = urlInput.value.trim();
+    if (url) {
+        localStorage.setItem('googleScriptUrl', url);
+        alert('Google Script URL saved successfully!');
+        console.log("Google Script URL saved:", url);
+    } else {
+        alert('Please enter a valid Google Script URL');
+    }
+}
+
+// Load saved Google Script URL on page load
+function loadGoogleScriptUrl() {
+    const urlInput = document.getElementById('google-script-url');
+    if (!urlInput) return;
+    
+    const savedUrl = localStorage.getItem('googleScriptUrl');
+    if (savedUrl) {
+        urlInput.value = savedUrl;
+        console.log("Loaded Google Script URL from storage");
+    }
+}
+
 // Analyze a random review
 function analyzeRandomReview() {
   hideError();
