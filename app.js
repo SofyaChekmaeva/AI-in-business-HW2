@@ -25,13 +25,18 @@ document.addEventListener("DOMContentLoaded", function () {
   analyzeBtn.addEventListener("click", analyzeRandomReview);
   apiTokenInput.addEventListener("change", saveApiToken);
   
-  // Добавьте обработчик для кнопки сохранения Google Script URL
+  // Add event listeners for Google Sheets logging
   const saveScriptUrlBtn = document.getElementById('save-script-url');
   if (saveScriptUrlBtn) {
       saveScriptUrlBtn.addEventListener('click', saveGoogleScriptUrl);
   }
+  
+  const testLoggingBtn = document.getElementById('test-logging');
+  if (testLoggingBtn) {
+      testLoggingBtn.addEventListener('click', testGoogleSheetsConnection);
+  }
 
-  // Load saved settings
+  // Load saved API token if exists (not used with local inference but kept for UI)
   const savedToken = localStorage.getItem("hfApiToken");
   if (savedToken) {
     apiTokenInput.value = savedToken;
@@ -116,29 +121,29 @@ function saveApiToken() {
 
 // Save Google Script URL to localStorage
 function saveGoogleScriptUrl() {
-    const urlInput = document.getElementById('google-script-url');
-    if (!urlInput) return;
-    
-    const url = urlInput.value.trim();
-    if (url) {
-        localStorage.setItem('googleScriptUrl', url);
-        alert('Google Script URL saved successfully!');
-        console.log("Google Script URL saved:", url);
-    } else {
-        alert('Please enter a valid Google Script URL');
-    }
+  const urlInput = document.getElementById('google-script-url');
+  if (!urlInput) return;
+  
+  const url = urlInput.value.trim();
+  if (url) {
+    localStorage.setItem('googleScriptUrl', url);
+    alert('Google Script URL saved successfully!');
+    console.log("Google Script URL saved:", url);
+  } else {
+    alert('Please enter a valid Google Script URL');
+  }
 }
 
 // Load saved Google Script URL on page load
 function loadGoogleScriptUrl() {
-    const urlInput = document.getElementById('google-script-url');
-    if (!urlInput) return;
-    
-    const savedUrl = localStorage.getItem('googleScriptUrl');
-    if (savedUrl) {
-        urlInput.value = savedUrl;
-        console.log("Loaded Google Script URL from storage");
-    }
+  const urlInput = document.getElementById('google-script-url');
+  if (!urlInput) return;
+  
+  const savedUrl = localStorage.getItem('googleScriptUrl');
+  if (savedUrl) {
+    urlInput.value = savedUrl;
+    console.log("Loaded Google Script URL from storage");
+  }
 }
 
 // Analyze a random review
@@ -167,35 +172,37 @@ function analyzeRandomReview() {
   sentimentResult.innerHTML = ""; // Reset previous result
   sentimentResult.className = "sentiment-result"; // Reset classes
 
-// Call local sentiment model (transformers.js)
-analyzeSentiment(selectedReview)
-  .then((result) => {
-    displaySentiment(result);
-    // После отображения результата, логируем его
-    const sentimentData = result[0][0]; // {label: 'POSITIVE/NEGATIVE', score: 0.99}
-    const label = sentimentData.label.toUpperCase();
-    const confidence = (sentimentData.score * 100).toFixed(1);
-    
-    // Собираем meta-данные
-    const meta = {
-      model: 'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
-      inferenceType: 'local_transformers.js',
-      timestamp: Date.now(),
-      browser: navigator.userAgent,
-      reviewLength: selectedReview.length
-    };
-    
-    // Отправляем логи в Google Sheets
-    logSentimentAnalysis(selectedReview, label, confidence, meta);
-  })
-  .catch((error) => {
-    console.error("Error:", error);
-    showError(error.message || "Failed to analyze sentiment.");
-  })
-  .finally(() => {
-    loadingElement.style.display = "none";
-    analyzeBtn.disabled = false;
-  });
+  // Call local sentiment model (transformers.js)
+  analyzeSentiment(selectedReview)
+    .then((result) => {
+      displaySentiment(result);
+      // After displaying result, log it
+      const sentimentData = result[0][0]; // {label: 'POSITIVE/NEGATIVE', score: 0.99}
+      const label = sentimentData.label.toUpperCase();
+      const confidence = (sentimentData.score * 100).toFixed(1);
+      
+      // Collect meta-data
+      const meta = {
+        model: 'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
+        inferenceType: 'local_transformers.js',
+        timestamp: Date.now(),
+        browser: navigator.userAgent.substring(0, 100),
+        reviewLength: selectedReview.length,
+        hasApiToken: !!apiToken
+      };
+      
+      // Send logs to Google Sheets
+      logSentimentAnalysis(selectedReview, label, confidence, meta);
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      showError(error.message || "Failed to analyze sentiment.");
+    })
+    .finally(() => {
+      loadingElement.style.display = "none";
+      analyzeBtn.disabled = false;
+    });
+}
 
 // Call local transformers.js pipeline for sentiment classification
 async function analyzeSentiment(text) {
@@ -272,6 +279,73 @@ function getSentimentIcon(sentiment) {
   }
 }
 
+// Logging to Google Sheets
+async function logSentimentAnalysis(reviewText, sentimentLabel, confidence, meta) {
+    try {
+        // Get saved URL from localStorage
+        const googleScriptUrl = localStorage.getItem('googleScriptUrl');
+        
+        if (!googleScriptUrl) {
+            console.warn("Google Script URL not configured. Skipping logging.");
+            return;
+        }
+        
+        // Prepare data for sending
+        const payload = {
+            ts: Date.now(),
+            review: reviewText.substring(0, 10000), // Limit length
+            sentiment: `${sentimentLabel} (${confidence}%)`,
+            meta: JSON.stringify(meta)
+        };
+        
+        console.log("Sending log to Google Sheets:", payload);
+        
+        // Create parameters for GET request (works better with CORS)
+        const params = new URLSearchParams(payload);
+        const url = `${googleScriptUrl}?${params.toString()}`;
+        
+        // Send request using fetch
+        // Use no-cors to bypass CORS restrictions
+        const response = await fetch(url, {
+            method: 'GET',
+            mode: 'no-cors' // Important: don't expect response due to CORS
+        });
+        
+        console.log("Log sent to Google Sheets (no-cors mode)");
+        
+    } catch (error) {
+        console.error("Failed to save log to Google Sheets:", error);
+        // Don't show error to user to not interrupt main process
+    }
+}
+
+// Test Google Sheets connection
+async function testGoogleSheetsConnection() {
+    const googleScriptUrl = localStorage.getItem('googleScriptUrl');
+    
+    if (!googleScriptUrl) {
+        alert('Please configure Google Script URL first');
+        return;
+    }
+    
+    try {
+        const testUrl = `${googleScriptUrl}?test=true`;
+        const response = await fetch(testUrl);
+        
+        if (response.ok) {
+            const data = await response.json();
+            alert(`Connection successful!\nStatus: ${data.status}\nMessage: ${data.message}`);
+            console.log("Google Sheets test response:", data);
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+    } catch (error) {
+        console.error("Google Sheets test failed:", error);
+        alert(`Connection failed: ${error.message}\n\nMake sure:\n1. Script is deployed as "Web App"\n2. Access is set to "Anyone"\n3. You have authorized the script`);
+    }
+}
+
 // Show error message
 function showError(message) {
   errorElement.textContent = message;
@@ -282,46 +356,3 @@ function showError(message) {
 function hideError() {
   errorElement.style.display = "none";
 }
-
-// Logging
-// Logging to Google Sheets
-async function logSentimentAnalysis(reviewText, sentimentLabel, confidence, meta) {
-    try {
-        // Получаем сохраненный URL из localStorage
-        const googleScriptUrl = localStorage.getItem('googleScriptUrl');
-        
-        if (!googleScriptUrl) {
-            console.warn("Google Script URL not configured. Skipping logging.");
-            return;
-        }
-        
-        // Подготавливаем данные для отправки
-        const payload = {
-            ts: Date.now(),
-            review: reviewText.substring(0, 10000), // Ограничиваем длину
-            sentiment: `${sentimentLabel} (${confidence}%)`,
-            meta: JSON.stringify(meta)
-        };
-        
-        console.log("Sending log to Google Sheets:", payload);
-        
-        // Создаем параметры для GET запроса (лучше работает с CORS)
-        const params = new URLSearchParams(payload);
-        const url = `${googleScriptUrl}?${params.toString()}`;
-        
-        // Отправляем запрос с помощью fetch
-        // Используем no-cors для обхода CORS ограничений
-        const response = await fetch(url, {
-            method: 'GET',
-            mode: 'no-cors' // Важно: не ждем ответ из-за CORS
-        });
-        
-        console.log("Log sent to Google Sheets (no-cors mode)");
-        
-    } catch (error) {
-        console.error("Failed to save log to Google Sheets:", error);
-        // Не показываем ошибку пользователю, чтобы не мешать основному процессу
-    }
-}
-
-
